@@ -50,3 +50,31 @@ Die Rolle `common` stellt sicher, dass grundlegende Systemparameter auf allen Ho
    - `SystemMaxUse=500M`: Begrenzt den Speicherplatz der Systemd-Logs auf 500 MB.
    - `MaxRetentionSec=1month`: Logs werden maximal einen Monat aufbewahrt.
    - Dies verhindert, dass die Festplatte durch ausufernde Log-Dateien vollgestillt wird.
+
+---
+
+## 3. Rolle: security_baseline (System-Härtung)
+
+Diese Rolle implementiert grundlegende Sicherheitsmaßnahmen, um den SSH-Zugang abzusichern.
+
+### Maßnahmen
+1. **Password Authentication**: Deaktiviert den passwortbasierten Login (`PasswordAuthentication no`). Zugriff ist nur noch via SSH-Key möglich.
+2. **Root Login**: Verhindert den direkten Root-Login via Passwort (`PermitRootLogin prohibit-password`). Dies zwingt Angreifer dazu, einen existierenden User-Account zu kennen oder Key-basierte Authentifizierung zu nutzen.
+
+Diese Änderungen werden durch einen automatischen Reload des SSH-Dienstes sofort wirksam.
+
+---
+
+## 4. Rolle: docker_host (Applikations-Laufzeit)
+
+Diese Rolle installiert die Docker Engine und alle notwendigen Komponenten für den Betrieb von Container-basierten Workloads.
+
+### Aufgaben
+1. **Dependencies**: Installation von `apt-transport-https`, `ca-certificates`, `curl`, `gnupg` und `lsb-release`.
+2. **Repository**: Hinzufügen des offiziellen GPG-Keys und des Docker-Repositories für Debian (stable).
+3. **Docker Installation**:
+   - `docker-ce`: Docker Engine.
+   - `docker-ce-cli`: CLI-Tools.
+   - `containerd.io`: Container-Laufzeit.
+   - `docker-compose-plugin`: Docker Compose (V2) Integration.
+4. **Benutzer-Berechtigungen**: Der `ansible` User wird zur `docker` Gruppe hinzugefügt, um Docker-Befehle ohne `sudo` ausführen zu können (erleichtert die CI/CD-Automatisierung).
