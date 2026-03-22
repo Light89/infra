@@ -1,6 +1,6 @@
 # Ansible Konfigurations-Dokumentation
 
-Diese Dokumentation beschreibt die automatisierten Konfigurationsschritte, die via Ansible auf den Zielsystemen durchgeführt werden. Das Ziel ist ein gehärtetes, standardisiertes und für Docker optimiertes System-Setup.
+Diese Dokumentation beschreibt die automatisierten Konfigurationsschritte, die via Ansible auf den Zielsystemen durchgeführt werden. Alle Rollen sind **100% idempotent** ausgelegt – sie können beliebig oft ausgeführt werden, ohne das System in einen inkonsistenten Zustand zu bringen.
 
 ## 1. Playbook-Ablauf
 
