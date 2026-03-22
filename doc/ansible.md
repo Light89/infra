@@ -78,3 +78,12 @@ Diese Rolle installiert die Docker Engine und alle notwendigen Komponenten für 
    - `containerd.io`: Container-Laufzeit.
    - `docker-compose-plugin`: Docker Compose (V2) Integration.
 4. **Benutzer-Berechtigungen**: Der `ansible` User wird zur `docker` Gruppe hinzugefügt, um Docker-Befehle ohne `sudo` ausführen zu können (erleichtert die CI/CD-Automatisierung).
+
+---
+
+## 5. Qualitätssicherung (Linting)
+
+Um die Wartbarkeit und Sicherheit der Playbooks zu garantieren, wird `ansible-lint` eingesetzt.
+
+- **Zweck**: Statische Analyse der YAML-Dateien auf Best Practices (z.B. korrekte Modul-Parameter, keine "naked" commands, sichere File-Berechtigungen).
+- **IDE-Integration**: Der Pfad zum Executable (`/opt/homebrew/bin/ansible-lint`) kann direkt in der IDE hinterlegt werden, um Live-Feedback beim Editieren zu erhalten.
