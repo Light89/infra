@@ -22,6 +22,6 @@ variable "admin_user" {
   type = string
 }
 
-variable "ssh_key" {
+variable "ssh_public_key" {
   type = string
 }

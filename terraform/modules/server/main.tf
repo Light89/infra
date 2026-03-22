@@ -16,8 +16,8 @@ resource "hcloud_server" "main" {
   }
 
   user_data = templatefile("${path.module}/templates/cloud-init-base.yaml.tftpl", {
-    admin_user = var.admin_user,
-    ssh_key    = var.ssh_key
+    admin_user     = var.admin_user,
+    ssh_public_key = var.ssh_public_key
   })
 
   labels = {

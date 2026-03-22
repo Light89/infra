@@ -19,8 +19,8 @@ module "server" {
   location     = "nbg1"
   network_id   = module.network.network_id
   firewall_id  = module.firewall.firewall_id
-  admin_user   = "ansible"
-  ssh_key      = var.ssh_public_key
+  admin_user     = "ansible"
+  ssh_public_key = var.ssh_public_key
   
   depends_on = [
     module.network,
