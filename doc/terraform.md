@@ -90,3 +90,16 @@ Für die initiale Konfiguration wird das `user_data` Template genutzt. Dies erm�
 - **Benutzer**: Ein administrativer User `ansible` wird angelegt.
 - **SSH**: Der öffentliche Schlüssel des Admins wird hinterlegt, um den Zugriff in Schritt 5 des Deployments zu ermöglichen.
 - **Automatisierung**: Cloud-Init bereitet das System so weit vor, dass Ansible nach Erreichbarkeit des SSH-Ports sofort übernehmen kann.
+
+---
+
+## 6. Modulares Design & Best Practices
+
+In dieser Infrastruktur wurde bewusst auf ein modulares Design Wert gelegt.
+
+### Warum mehrfache `versions.tf` Dateien?
+Obwohl alle Komponenten aktuell dieselbe Provider-Version (`hcloud >= 1.60`) nutzen, besitzt jedes Modul (Network, Firewall, Server) eine eigene `versions.tf`.
+
+- **Portabilität**: Jedes Modul ist in sich abgeschlossen. Es kann problemlos in andere Projekte kopiert werden, ohne dass dort manuell nach den benötigten Providern gesucht werden muss.
+- **Zukunftssicherheit**: Sollte ein Modul in Zukunft eine spezifischere Version eines Providers benötigen, kann dies lokal im Modul gesteuert werden, ohne die globale Konfiguration zu beeinflussen.
+- **Standard-Konformität**: Dies entspricht den gängigen Terraform Best Practices für die Modulentwicklung.
