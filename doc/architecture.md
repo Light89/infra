@@ -2,7 +2,9 @@
 
 Dieses Dokument veranschaulicht die exakte Abfolge der Systemintegrationen, die bei der Ausführung von `./scripts/deploy_mvp.sh` automatisch stattfinden. Das Skript fungiert als Bindeglied zwischen unserer deklarativen Infrastruktur (Terraform), unseren "Local-First" Secrets (1Password) und dem imperativen Konfigurationsmanagement (Ansible).
 
-## Ausführungssequenz
+## 1. Gesamtübersicht (High-Level)
+
+Die folgende Sequenz zeigt den vollständigen Prozess von der Initialisierung bis zum erfolgreichen Deployment.
 
 ```mermaid
 sequenceDiagram
@@ -64,6 +66,122 @@ sequenceDiagram
     Script->>Script: rm -f /tmp/file (Löscht den Key auf der Festplatte)
     Script-->>Admin: Deployment erfolgreich! Server IP: 178.x.x.x
 ```
+
+---
+
+## 2. Detaillierte Prozessschritte
+
+### Schritt 1: Infrastruktur Provisionierung (Terraform & S3)
+
+In diesem Schritt wird die physische (bzw. virtuelle) Infrastruktur bei Hetzner Cloud erzeugt. Die Sicherheit wird durch die In-Memory Injection von Secrets via 1Password gewährleistet.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant 1Pwd as 1Password CLI
+    participant TF as Terraform
+    participant S3 as AWS S3 (State)
+    participant HCloud as Hetzner API
+
+    Script->>1Pwd: op run -- terraform apply
+    activate 1Pwd
+    Note right of 1Pwd: Löst op:// Referenzen in .env auf
+    1Pwd->>TF: Injiziert HCLOUD_TOKEN & AWS_KEYS in Environment
+    activate TF
+    
+    TF->>S3: Prüfe State Lock (DynamoDB/S3-Native)
+    S3-->>TF: Lock erworben
+    
+    TF->>HCloud: Vergleiche Plan mit Ist-Zustand
+    HCloud-->>TF: Änderungen erforderlich
+    
+    TF->>HCloud: Erstelle Resource (Server, Network, Firewall)
+    HCloud-->>TF: Resource erstellt (ID: 123)
+    
+    TF->>S3: Schreibe neuen State
+    TF->>S3: Release Lock
+    deactivate TF
+    1Pwd-->>Script: Prozess beendet (Secrets aus Memory gelöscht)
+    deactivate 1Pwd
+```
+
+### Schritt 2 & 3: IP Extraktion & Inventory Update
+
+Nachdem die VM existiert, muss ihre öffentliche IP-Adresse ermittelt und in das Ansible-Inventory (`hosts.ini`) geschrieben werden.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant 1Pwd as 1Password CLI
+    participant TF as Terraform
+    participant S3 as AWS S3 (State)
+    participant FS as Dateisystem (hosts.ini)
+
+    Script->>1Pwd: op run -- terraform output server_ip
+    1Pwd->>TF: Injiziert AWS_KEYS (für S3 Zugriff)
+    TF->>S3: Lese aktuellen State
+    S3-->>TF: State Content (JSON)
+    TF-->>Script: 178.x.x.x
+    
+    Script->>FS: sed -i 's/^dev-docker-01.*/dev-docker-01 ansible_host=178.x.x.x/'
+    Note right of FS: IP wird im Inventory aktualisiert
+```
+
+### Schritt 4: Verbindungsprüfung (SSH-Boot-Check)
+
+Bevor Ansible starten kann, muss sichergestellt sein, dass die VM nicht nur "läuft", sondern auch via SSH erreichbar ist (Cloud-Init abgeschlossen).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant VM as dev-docker-01 (Port 22)
+
+    loop Alle 5 Sekunden
+        Script->>VM: nc -zvw1 178.x.x.x 22
+        alt Port geschlossen / Cloud-Init läuft
+            VM-->>Script: Connection refused
+            Note over Script: sleep 5
+        else Port offen / SSH bereit
+            VM-->>Script: Connection succeeded
+        end
+    end
+```
+
+### Schritt 5: Konfigurationsmanagement (Ansible & 1Password)
+
+Der kritischste Schritt: Die sichere Übergabe des SSH-Keys an Ansible ohne Nutzung eines lokalen SSH-Agenten, um Interaktivität zu vermeiden.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant 1Pwd as 1Password CLI
+    participant FS as /tmp/deploy_key (Temp)
+    participant Ansible as Ansible
+    participant VM as dev-docker-01
+
+    Script->>1Pwd: op read "op://Infrastructure/SSHKey/private_key"
+    1Pwd-->>FS: Schreibt Key temporär auf Disk
+    
+    Note over Script,Ansible: env SSH_AUTH_SOCK="" (Agent Bypass)
+    Script->>Ansible: ansible-playbook --private-key /tmp/deploy_key
+    activate Ansible
+    
+    Ansible->>VM: SSH Verbindung aufbauen
+    VM-->>Ansible: Authentifizierung erfolgreich
+    
+    Ansible->>VM: Führe Playbook-Rollen aus (Docker, Security, etc.)
+    VM-->>Ansible: System konfiguriert
+    deactivate Ansible
+    
+    Script->>FS: rm -f /tmp/deploy_key
+    Note right of FS: Key wird sicher gelöscht
+```
+
+---
 
 ## Architekturentscheidungen & Erläuterungen
 
