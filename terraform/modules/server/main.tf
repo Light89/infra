@@ -3,7 +3,7 @@ resource "hcloud_server" "main" {
   image       = "debian-13"
   server_type = var.server_type
   location    = var.location
-  
+
   firewall_ids = [var.firewall_id]
 
   network {
@@ -23,5 +23,9 @@ resource "hcloud_server" "main" {
   labels = {
     role = var.server_role
     env  = "dev"
+  }
+
+  lifecycle {
+    ignore_changes = [user_data]
   }
 }
