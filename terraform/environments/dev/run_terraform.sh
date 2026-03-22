@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 
-# Export SSH Key from 1Password
-# This will be injected into Terraform via the TF_VAR_ssh_public_key environment variable
-export TF_VAR_ssh_public_key=$(op read "op://Vault/SSH_Key/public_key")
-
 # Note: Ansible will authenticate later via the local 1Password SSH agent.
 
-# Run Terraform with HCLOUD_TOKEN injected from 1Password via .env file
+# Run Terraform with HCLOUD_TOKEN and TF_VAR_ssh_public_key injected from 1Password via .env file
+# Ensure your .env file contains the op:// references before running this script
 op run --env-file .env -- terraform apply

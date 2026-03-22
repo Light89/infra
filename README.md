@@ -21,15 +21,20 @@ Dieses Repository folgt einer strikten Trennung der Zuständigkeiten:
 Um hartkodierte Secrets im Quellcode zu vermeiden, nutzt dieses Setup die 1Password CLI zur Injektion von Umgebungsvariablen zur Laufzeit.
 
 ### 1. Terraform Ausführung
-Bevor Terraform ausgeführt wird, muss das `HCLOUD_TOKEN` als Umgebungsvariable (z.B. über eine `.env` Datei) sowie der SSH-Key als `TF_VAR_ssh_public_key` bereitgestellt werden.
+Bevor Terraform ausgeführt wird, müssen die Secrets (wie `HCLOUD_TOKEN` und der SSH-Key als `TF_VAR_ssh_public_key`) als 1Password Secret-Referenzen (`op://...`) bereitgestellt werden.
 
-Ein beispielhafter Workflow ist im Skript `terraform/environments/dev/run_terraform.sh` dokumentiert:
+Lege dazu eine `.env` Datei im Verzeichnis `terraform/environments/dev` an (siehe `.env.example`):
+
+```env
+HCLOUD_TOKEN="op://Vault/Hetzner_Token/credential"
+TF_VAR_ssh_public_key="op://Vault/SSH_Key/public_key"
+```
+
+Ein beispielhafter Aufruf ist im Skript `terraform/environments/dev/run_terraform.sh` dokumentiert:
 
 ```bash
-# SSH-Key aus 1Password exportieren und in Variable injizieren
-export TF_VAR_ssh_public_key=$(op read "op://Vault/SSH_Key/public_key")
-
-# Terraform mit dem HCLOUD_TOKEN (via .env) über 1Password ausführen
+# Terraform mit den Secrets über 1Password ausführen
+# 'op run' liest die .env Datei, löst die 'op://...' URIs auf und injiziert sie als Umgebungsvariablen
 op run --env-file .env -- terraform apply
 ```
 
