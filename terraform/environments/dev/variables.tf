@@ -19,6 +19,11 @@ variable "servers" {
       server_type = "cx23"
       location    = "nbg1"
       role        = "docker-host"
+    },
+    "gitlab" = {
+      server_type = "cx23"
+      location    = "fsn1"
+      role        = "utility"
     }
   }
 }

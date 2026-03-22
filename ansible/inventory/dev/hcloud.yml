@@ -23,9 +23,9 @@ hostnames:
 
 # Dynamische Gruppenbildung basierend auf Labels
 groups:
-  docker_hosts: labels.role == "docker-host"
-  base_hosts: labels.role == "base"
-  utility_hosts: labels.role == "utility"
+  docker_hosts: hcloud_labels.role == "docker-host"
+  base_hosts: hcloud_labels.role == "base"
+  utility_hosts: hcloud_labels.role == "utility"
 
 # Setzt ansible_host auf die öffentliche IP (IPv4)
 compose:
