@@ -1,0 +1,58 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Configuration
+ENV_DIR="$BASE_DIR/terraform/environments/dev"
+INVENTORY_FILE="$BASE_DIR/ansible/inventory/dev/hosts.ini"
+PLAYBOOK_FILE="$BASE_DIR/ansible/playbooks/site.yml"
+
+echo "Step 1: Provisioning infrastructure with Terraform..."
+cd "$ENV_DIR"
+# Assuming op is available as per the environment
+op run --account my.1password.com --env-file .env -- terraform apply -auto-approve
+
+echo "Step 2: Extracting server IP..."
+SERVER_IP=$(op run --account my.1password.com --env-file .env -- terraform output -raw server_ip)
+
+if [ -z "$SERVER_IP" ]; then
+    echo "Error: Could not retrieve server IP from Terraform output."
+    exit 1
+fi
+
+echo "Step 3: Updating Ansible inventory..."
+# Check if the line already exists to avoid duplication (simple version)
+if grep -q "dev-docker-01 ansible_host=" "$INVENTORY_FILE"; then
+    sed -i '' "s/dev-docker-01 ansible_host=.*/dev-docker-01 ansible_host=$SERVER_IP/" "$INVENTORY_FILE"
+else
+    # Insert after [dev] group
+    sed -i '' "/\[dev\]/a\\
+dev-docker-01 ansible_host=$SERVER_IP
+" "$INVENTORY_FILE"
+fi
+
+echo "Step 4: Waiting for cloud-init and SSH..."
+echo "Waiting for $SERVER_IP to become reachable..."
+# Simple wait loop
+until nc -zvw1 "$SERVER_IP" 22; do
+  sleep 5
+done
+
+echo "Step 5: Applying Ansible playbooks..."
+cd "$BASE_DIR/ansible"
+
+# Fetch private key securely for Ansible
+PRIVATE_KEY_FILE=$(mktemp)
+op read "op://kox2l2elvuwbmiszxmgo7ojxja/4o7yybaviycv7tbgbby2gmze5a/private key" --account my.1password.com > "$PRIVATE_KEY_FILE"
+chmod 600 "$PRIVATE_KEY_FILE"
+
+# Disable SSH agent to prevent 'communication with agent failed' errors
+env SSH_AUTH_SOCK="" ansible-playbook -i inventory/dev/hosts.ini playbooks/site.yml --user ansible --private-key "$PRIVATE_KEY_FILE"
+
+
+# Clean up
+rm -f "$PRIVATE_KEY_FILE"
+
+echo "Deployment complete! Server IP: $SERVER_IP"
