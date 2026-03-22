@@ -6,7 +6,9 @@ Die Phase 1 der Infrastruktur-Evolution wurde erfolgreich umgesetzt. Das System 
 ### Erreichte Ziele:
 - **Dynamisches Inventar**: Umstellung auf das `hetzner.hcloud` Ansible-Plugin. Server werden live über die API anhand von Labels erkannt.
 - **Spezialisierte Rollen**: Unterstützung für `base`, `docker-host` und `utility`.
-- **Scaling-Ready**: Die Terraform-Konfiguration nutzt `for_each` und ermöglicht das parallele Deployment beliebig vieler Server über eine zentrale Map in den Variablen.
+- **Scaling**: Terraform-Workflows verwenden `for_each` für beliebig viele Server.
+- **GitLab-Integration**: Bestehende Instanz erfolgreich importiert und via dynamic Inventory (Label `role: utility`) eingebunden.
+- **Zentrale Dokumentation**: Neue Server-Übersicht in `doc/servers.md` und detaillierter Ansible-Rollenguide in `doc/ansible.md`.
 - **Wartbarkeit**: `deploy_mvp.sh` wurde refactored und ist nun vollständig generisch.
 
 ## 2. Architektur-Stack
