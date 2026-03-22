@@ -69,18 +69,104 @@ sequenceDiagram
 
 ### Schritt 1: Infrastruktur Provisionierung (Multi-Server)
 
-Durch die Nutzung von `for_each` in Terraform wird die gesamte Serverliste in einem Durchlauf provisioniert. Jede Resource erhält automatisch Labels (z.B. `role: docker-host` oder `role: utility`), die für das spätere Discovery entscheidend sind.
+In diesem Schritt wird die gesamte Infrastruktur-Map bei Hetzner Cloud abgeglichen.
 
-### Schritt 2: Dynamische Inventar-Erkennung
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant 1Pwd as 1Password CLI
+    participant TF as Terraform
+    participant S3 as AWS S3 (State)
+    participant HCloud as Hetzner API
 
-Anstatt IPs fest zu kodieren, nutzt Ansible das `hetzner.hcloud` Plugin.
-1. Ansible fragt die Hetzner API nach allen Servern mit dem Label `env: dev`.
-2. Die Server werden automatisch in Gruppen sortiert (z.B. `utility_hosts`), basierend auf ihrem `role` Label.
-3. Das Deployment-Skript extrahiert lediglich die IP des primären Docker-Hosts für den initialen Erreichbarkeits-Check.
+    Script->>1Pwd: op run -- terraform apply
+    activate 1Pwd
+    1Pwd->>TF: Injiziert HCLOUD_TOKEN & AWS_KEYS
+    activate TF
 
-### Schritt 3: Life-Cycle Schutz (Importierte Ressourcen)
+    TF->>S3: State Lock erwerben
+    TF->>HCloud: Iteriere über var.servers (for_each)
+    HCloud-->>TF: Ressourcen (Server, Net, FW) erstellt/geändert
+    
+    TF->>S3: Schreibe State & Release Lock
+    deactivate TF
+    deactivate 1Pwd
+```
 
-Für manuell importierte Ressourcen (wie die `gitlab` Instanz) wurde ein `lifecycle`-Schutz implementiert. Dies verhindert, dass Terraform den Server löscht, falls sich z.B. Cloud-Init Daten (`user_data`) unterscheiden, die nur beim ersten Boot relevant sind.
+### Schritt 2: Dynamische Inventar-Discovery
+
+Anstelle von `sed` im Inventory nutzen wir nun die direkte API-Abfrage.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant TF as Terraform
+    participant Ansible as Ansible
+    participant HCloud as Hetzner API
+
+    Script->>TF: terraform output server_ips
+    TF-->>Script: Map { "dev-docker-01": "...", "gitlab": "..." }
+    
+    Note over Script,Ansible: Ansible Start
+    Ansible->>HCloud: Inventory-Plugin (hcloud.yml) fragt API
+    HCloud-->>Ansible: Liefert Hosts + Labels (role, env)
+    Note right of Ansible: Gruppiert Hosts in @docker_hosts, @utility_hosts
+```
+
+### Schritt 3: Verbindungsprüfung (SSH-Boot-Check)
+
+Der Script-Loop wartet auf die Erreichbarkeit des primären Management-Nodes.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant VM as dev-docker-01 (Kernel)
+    participant CI as Cloud-Init (Hintergrund)
+    participant SSH as SSH-Daemon (Port 22)
+
+    VM->>CI: Startet Cloud-Init
+    activate CI
+    CI->>CI: User 'ansible' erstellen & Keys hinterlegen
+    
+    loop Alle 5 Sekunden
+        Script->>SSH: nc -zvw1 <PRIMARY_IP> 22
+        alt CI noch aktiv
+            SSH-->>Script: Connection refused
+        else CI abgeschlossen
+            CI->>SSH: Dienst bereit
+            deactivate CI
+            SSH-->>Script: Connection succeeded
+        end
+    end
+```
+
+### Schritt 4: Konfigurationsmanagement (Ansible & 1Password)
+
+Die sichere Übergabe des SSH-Keys an Ansible.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Script as deploy_mvp.sh
+    participant 1Pwd as 1Password CLI
+    participant Ansible as Ansible
+    participant VM as Hosts (Parallel)
+
+    Script->>1Pwd: op read (Private SSH Key)
+    1Pwd-->>Script: Key in temporäre Datei
+    
+    Script->>Ansible: ansible-playbook -i inventory/dev/hcloud.yml
+    activate Ansible
+    Ansible->>VM: SSH Verbindung (User: ansible)
+    Ansible->>VM: Rollen: baseline + Rollen-spezifisch
+    VM-->>Ansible: System konfiguriert
+    deactivate Ansible
+    
+    Script->>Script: Lösche temporären Key
+```
 
 ---
 
