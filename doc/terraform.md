@@ -25,7 +25,7 @@ graph TD
     TF -->|Manage| Server
     TF -->|Manage| Firewall
     TF -->|Manage| Network
-    
+
     Server --- Network
     Network --- Subnet
     Server --- Firewall
@@ -40,6 +40,7 @@ Um Konsistenz in Team-Umgebungen zu gewährleisten und den Infrastruktur-Status 
 - **Endpoint**: `https://fsn1.your-objectstorage.com`
 
 ### Besonderheiten
+
 - **Sicherheit**: Die Authentifizierung erfolgt ausschließlich über 1Password (`op run`), wodurch keine AWS-Keys lokal gespeichert werden müssen.
 - **Konfiguration**: Aufgrund der Nutzung von Hetzner S3 (nicht AWS) sind diverse Validierungen deaktiviert (`skip_region_validation`, `skip_credentials_validation`, etc.), um Kompatibilität sicherzustellen.
 
@@ -54,6 +55,7 @@ Die Infrastruktur nutzt ein isoliertes privates Netzwerk (`hcloud_network`), um 
 - **Subnetz**: `10.1.1.0/24` (Zone: `eu-central`)
 
 ### Integration
+
 Server werden primär über das private Netzwerk miteinander verbunden. Dies reduziert die Angriffsfläche im öffentlichen Internet und sorgt für geringe Latenzen.
 
 ---
@@ -65,12 +67,14 @@ Zentrale Firewall-Regeln (`hcloud_firewall`) steuern den ein- und ausgehenden Da
 - **Name**: `dev-default-fw`
 
 ### Inbound Regeln
-| Protokoll | Port | Quelle | Zweck |
-|-----------|------|--------|-------|
-| TCP | 22 | `var.allowed_ssh_ips` | Sicherer SSH-Zugriff (via deploy_mvp.sh) |
-| ICMP | any | `0.0.0.0/0`, `::/0` | Ping / Diagnose erreichbar |
+
+| Protokoll | Port | Quelle                | Zweck                                    |
+| --------- | ---- | --------------------- | ---------------------------------------- |
+| TCP       | 22   | `var.allowed_ssh_ips` | Sicherer SSH-Zugriff (via deploy_mvp.sh) |
+| ICMP      | any  | `0.0.0.0/0`, `::/0`   | Ping / Diagnose erreichbar               |
 
 ### Outbound Regeln
+
 - **TCP/UDP**: Alle Ports sind nach außen hin offen (`0.0.0.0/0`, `::/0`), um Updates (apt, docker) und Kommunikation mit externen APIs zu ermöglichen.
 
 ---
@@ -85,6 +89,7 @@ Die Hauptinstanz (`hcloud_server`) dient als Docker-Host und wird automatisiert 
 - **Location**: `nbg1` (Nürnberg)
 
 ### Cloud-Init (Bootstrapping)
+
 Für die initiale Konfiguration wird das `user_data` Template genutzt. Dies ermöglicht ein "headless" Deployment ohne manuelle Eingriffe.
 
 - **Benutzer**: Ein administrativer User `ansible` wird angelegt.
@@ -93,21 +98,23 @@ Für die initiale Konfiguration wird das `user_data` Template genutzt. Dies erm�
 
 ---
 
-## 6. Modulares Design & Best Practices
+## 6. Dateistruktur der Module
 
-In dieser Infrastruktur wurde bewusst auf ein modulares Design Wert gelegt.
-
-### Warum mehrfache `versions.tf` Dateien?
-Obwohl alle Komponenten aktuell dieselbe Provider-Version (`hcloud >= 1.60`) nutzen, besitzt jedes Modul (Network, Firewall, Server) eine eigene `versions.tf`.
-
-- **Portabilität**: Jedes Modul ist in sich abgeschlossen. Es kann problemlos in andere Projekte kopiert werden, ohne dass dort manuell nach den benötigten Providern gesucht werden muss.
-- **Zukunftssicherheit**: Sollte ein Modul in Zukunft eine spezifischere Version eines Providers benötigen, kann dies lokal im Modul gesteuert werden, ohne die globale Konfiguration zu beeinflussen.
-- **Standard-Konformität**: Dies entspricht den gängigen Terraform Best Practices für die Modulentwicklung.
-
-### Dateistruktur der Module
 Jedes Modul ist nach demselben Schema aufgebaut, um Übersichtlichkeit und Wartbarkeit zu garantieren:
 
 - **`main.tf`**: Enthält die eigentliche Definition der Ressourcen (Logik).
 - **`variables.tf`**: Definiert die Eingabeparameter des Moduls. Dies ermöglicht es, Module mit unterschiedlichen Werten (z.B. verschiedenen Standorten oder IP-Bereichen) aufzurufen.
 - **`outputs.tf`**: Deklariert die Rückgabewerte. Diese Werte können von anderen Modulen oder der Haupt-Konfiguration weiterverarbeitet werden (z.B. die Netzwerk-ID für den Server).
 - **`versions.tf`**: Spezifiziert die benötigten Provider und Versionen für dieses Modul (Portabilität).
+
+## Modulares Design & Best Practices
+
+In dieser Infrastruktur wurde bewusst auf ein modulares Design Wert gelegt.
+
+### Warum mehrfache `versions.tf` Dateien?
+
+Obwohl alle Komponenten aktuell dieselbe Provider-Version (`hcloud >= 1.60`) nutzen, besitzt jedes Modul (Network, Firewall, Server) eine eigene `versions.tf`.
+
+- **Portabilität**: Jedes Modul ist in sich abgeschlossen. Es kann problemlos in andere Projekte kopiert werden, ohne dass dort manuell nach den benötigten Providern gesucht werden muss.
+- **Zukunftssicherheit**: Sollte ein Modul in Zukunft eine spezifischere Version eines Providers benötigen, kann dies lokal im Modul gesteuert werden, ohne die globale Konfiguration zu beeinflussen.
+- **Standard-Konformität**: Dies entspricht den gängigen Terraform Best Practices für die Modulentwicklung.
