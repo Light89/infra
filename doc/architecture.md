@@ -24,10 +24,10 @@ sequenceDiagram
     Script->>1Pwd: op run (Liest .env)
     1Pwd-->>Script: Injiziert Secrets (HCLOUD_TOKEN, AWS_*)
     Script->>TF: terraform apply -auto-approve
-    TF<->>S3: Authentifizierung & State Lock (via op run)
+    TF->>S3: Authentifizierung & State Lock (via op run)
     TF->>HCloud: Provisioniert Netzwerk, Firewall, VM
-    HCloud-->>TF: Erfogreich (VM ist hochgefahren)
-    TF<->>S3: State Update & Unlock
+    HCloud-->>TF: Erfolgreich (VM ist hochgefahren)
+    TF->>S3: State Update & Unlock
     TF-->>Script: Apply abgeschlossen
     end
 
