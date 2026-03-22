@@ -14,12 +14,11 @@ cd "$ENV_DIR"
 # Assuming op is available as per the environment
 op run --account my.1password.com --env-file .env -- terraform apply -auto-approve
 
-echo "Step 2: Extracting server IP (Primary: dev-docker-01)..."
-SERVER_IPS=$(op run --account my.1password.com --env-file .env -- terraform output -json server_ips)
-SERVER_IP=$(echo "$SERVER_IPS" | jq -r '."dev-docker-01"')
+echo "Step 2: Extracting server IPs..."
+SERVER_IPS_JSON=$(op run --account my.1password.com --env-file .env -- terraform output -json server_ips)
 
-if [ -z "$SERVER_IP" ]; then
-    echo "Error: Could not retrieve server IP from Terraform output."
+if [ -z "$SERVER_IPS_JSON" ] || [ "$SERVER_IPS_JSON" == "null" ]; then
+    echo "Error: Could not retrieve server IPs from Terraform output."
     exit 1
 fi
 
@@ -28,10 +27,15 @@ echo "Step 3: Ansible Inventory (Dynamic)..."
 # Das Plugin erkennt den Server automatisch anhand seiner Labels.
 
 echo "Step 4: Waiting for cloud-init and SSH..."
-echo "Waiting for $SERVER_IP to become reachable..."
-# Simple wait loop
-until nc -zvw1 "$SERVER_IP" 22; do
-  sleep 5
+echo "$SERVER_IPS_JSON" | jq -r '.[]' | while read -r ip; do
+    if [ -n "$ip" ]; then
+        echo "Waiting for $ip to become reachable..."
+        # Simple wait loop
+        until nc -zvw1 "$ip" 22; do
+          sleep 5
+        done
+        echo "[OK] $ip is ready!"
+    fi
 done
 
 echo "Step 5: Applying Ansible playbooks..."
@@ -50,4 +54,4 @@ env SSH_AUTH_SOCK="" ansible-playbook -i inventory/dev/hcloud.yml playbooks/site
 # Clean up
 rm -f "$PRIVATE_KEY_FILE"
 
-echo "Deployment complete! Server IP: $SERVER_IP"
+echo "Deployment complete! All servers are provisioned and configured."
