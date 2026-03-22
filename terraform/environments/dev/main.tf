@@ -13,14 +13,16 @@ module "firewall" {
 }
 
 module "server" {
+  for_each     = var.servers
   source       = "../../modules/server"
-  server_name  = "dev-docker-01"
-  server_type  = "cx23"
-  location     = "nbg1"
+  server_name  = each.key
+  server_type  = each.value.server_type
+  location     = each.value.location
   network_id   = module.network.network_id
   firewall_id  = module.firewall.firewall_id
   admin_user     = "ansible"
   ssh_public_key = var.ssh_public_key
+  server_role    = each.value.role
   
   depends_on = [
     module.network,
@@ -28,6 +30,6 @@ module "server" {
   ]
 }
 
-output "server_ip" {
-  value = module.server.public_ip
+output "server_ips" {
+  value = { for k, v in module.server : k => v.public_ip }
 }

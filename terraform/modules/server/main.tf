@@ -21,7 +21,7 @@ resource "hcloud_server" "main" {
   })
 
   labels = {
-    role = "docker-host"
+    role = var.server_role
     env  = "dev"
   }
 }
