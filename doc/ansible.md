@@ -21,19 +21,6 @@ graph TD
     H --> I
 ```
 
----
-
-## 5. Rolle: utility_host (Infrastruktur-Dienste)
-
-Die Rolle `utility_host` ist für Server vorgesehen, die administrative Hilfsaufgaben oder zentrale Infrastruktur-Dienste übernehmen (z.B. Bastion-Hosts, Monitoring-Einstiegspunkte oder Backup-Knoten).
-
-### Aufgaben & Funktionen
-1. **Rollen-Verifikation**: Ein Sicherheitscheck stellt sicher, dass die Rolle nur auf dafür vorgesehenen Hosts (Label `role: utility`) ausgeführt wird.
-2. **System-Vorbereitung**: Optimierung des Systems für Hintergrund-Tasks und administrative Werkzeuge.
-3. **Erweiterbarkeit**: Diese Rolle dient als Basis für zukünftige Dienste:
-   - **Backup-Management**: Zentrale Steuerung von Datenbank-Dumps und Dateisicherungen.
-   - **Monitoring-Aggregatoren**: Sammeln von Metriken der anderen Cluster-Knoten.
-   - **CI/CD Runner**: Lokale Ausführung von Build-Prozessen.
 
 ---
 
@@ -76,9 +63,21 @@ Diese Rolle installiert die Docker Engine und alle notwendigen Komponenten für 
    - `docker-compose-plugin`: Docker Compose (V2) Integration.
 4. **Benutzer-Berechtigungen**: Der `ansible` User wird zur `docker` Gruppe hinzugefügt, um Docker-Befehle ohne `sudo` ausführen zu können (erleichtert die CI/CD-Automatisierung).
 
+## 5. Rolle: utility_host (Infrastruktur-Dienste)
+
+Die Rolle `utility_host` ist für Server vorgesehen, die administrative Hilfsaufgaben oder zentrale Infrastruktur-Dienste übernehmen (z.B. Bastion-Hosts, Monitoring-Einstiegspunkte oder Backup-Knoten).
+
+### Aufgaben & Funktionen
+1. **Rollen-Verifikation**: Ein Sicherheitscheck stellt sicher, dass die Rolle nur auf dafür vorgesehenen Hosts (Label `role: utility`) ausgeführt wird.
+2. **System-Vorbereitung**: Optimierung des Systems für Hintergrund-Tasks und administrative Werkzeuge.
+3. **Erweiterbarkeit**: Diese Rolle dient als Basis für zukünftige Dienste:
+   - **Backup-Management**: Zentrale Steuerung von Datenbank-Dumps und Dateisicherungen.
+   - **Monitoring-Aggregatoren**: Sammeln von Metriken der anderen Cluster-Knoten.
+   - **CI/CD Runner**: Lokale Ausführung von Build-Prozessen.
+
 ---
 
-## 5. Qualitätssicherung (Linting)
+## 6. Qualitätssicherung (Linting)
 
 Um die Wartbarkeit und Sicherheit der Playbooks zu garantieren, wird `ansible-lint` eingesetzt.
 

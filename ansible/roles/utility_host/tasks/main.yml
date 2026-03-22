@@ -1,7 +1,7 @@
 ---
 # Tasks for Utility Hosts (Placeholder)
 - name: Utility role check
-  debug:
+  ansible.builtin.debug:
     msg: "This server is a utility host."
 
 # Future tasks: Backup, Monitoring Dashboard, CI-Runner
