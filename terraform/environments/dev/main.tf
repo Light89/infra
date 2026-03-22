@@ -1,8 +1,8 @@
 module "network" {
   source       = "../../modules/network"
   network_name = "dev-network"
-  ip_range     = "10.0.0.0/16"
-  subnet_range = "10.0.1.0/24"
+  ip_range     = "10.1.0.0/16"
+  subnet_range = "10.1.1.0/24"
   network_zone = "eu-central"
 }
 
@@ -15,7 +15,7 @@ module "firewall" {
 module "server" {
   source       = "../../modules/server"
   server_name  = "dev-docker-host"
-  server_type  = "cpx11"
+  server_type  = "cx23"
   location     = "nbg1"
   network_id   = module.network.network_id
   firewall_id  = module.firewall.firewall_id
