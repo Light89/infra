@@ -53,9 +53,10 @@ Diese Änderungen werden durch einen automatischen Reload des SSH-Dienstes sofor
 Diese Rolle installiert die Docker Engine und alle notwendigen Komponenten für den Betrieb von Container-basierten Workloads.
 
 ### Aufgaben
-1. **Dependencies**: Installation von `apt-transport-https`, `ca-certificates`, `curl`, `gnupg` und `lsb-release`.
-2. **Repository**: Hinzufügen des offiziellen GPG-Keys und des Docker-Repositories für Debian (stable).
-3. **Docker Installation**:
+1. **Rollen-Verifikation**: Ein Sicherheitscheck stellt sicher, dass die Rolle nur auf dafür vorgesehenen Hosts (Label `role: docker-host`) ausgeführt wird.
+2. **Dependencies**: Installation von `apt-transport-https`, `ca-certificates`, `curl`, `gnupg` und `lsb-release`.
+3. **Repository**: Hinzufügen des offiziellen GPG-Keys und des Docker-Repositories für Debian (stable).
+4. **Docker Installation**:
    - `docker-ce`: Docker Engine.
    - `docker-ce-cli`: CLI-Tools.
    - `containerd.io`: Container-Laufzeit.
