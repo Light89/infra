@@ -1,6 +1,6 @@
 # Deployment Architektur (`deploy_mvp.sh`)
 
-Dieses Dokument veranschaulicht die exakte Abfolge der Systemintegrationen, die bei der Ausführung von `./scripts/deploy_mvp.sh` automatisch stattfinden. Das Skript fungiert als Bindeglied zwischen unserer deklarativen Infrastruktur (Terraform), unseren "Local-First" Secrets (1Password) und dem imperativen Konfigurationsmanagement (Ansible).
+Dieses Dokument veranschaulicht die exakte Abfolge der Systemintegrationen, die bei der Ausführung von `./scripts/deploy_mvp.sh` automatisch stattfinden. Das Skript fungiert als Bindeglied zwischen unserer deklarativen Infrastruktur (Terraform), unseren "Local-First" Secrets (1Password) und dem imperativen Konfigurationsmanagement (Ansible) unter Nutzung eines **dynamischen Inventars**.
 
 ## 1. Gesamtübersicht (High-Level)
 
@@ -17,7 +17,7 @@ sequenceDiagram
     participant S3 as S3 State Backend
     participant HCloud as Hetzner API
     participant Ansible as Ansible
-    participant VM as dev-docker-01
+    participant VM as Hosts (Docker/GitLab)
 
     Admin->>Script: Führe ./deploy_mvp.sh aus
 
@@ -26,54 +26,50 @@ sequenceDiagram
     Script->>1Pwd: op run (Liest .env)
     1Pwd-->>Script: Injiziert Secrets (HCLOUD_TOKEN, AWS_*)
     Script->>TF: terraform apply -auto-approve
-    TF->>S3: Authentifizierung & State Lock (via op run)
-    TF->>HCloud: Provisioniert Netzwerk, Firewall, VM
-    HCloud-->>TF: Erfolgreich (VM ist hochgefahren)
-    TF->>S3: State Update & Unlock
+    TF->>S3: Authentifizierung & State Lock
+    TF->>HCloud: Erstellt/Abgleicht Server-Map (for_each)
+    HCloud-->>TF: Server bereit (Labels gesetzt)
+    TF->>S3: State Update
     TF-->>Script: Apply abgeschlossen
     end
 
     rect rgb(51, 65, 85)
-    Note over Script,TF: Schritt 2 & 3: IP Extraktion & Inventory Update
-    Script->>TF: op run -- terraform output server_ip
-    TF-->>Script: 178.x.x.x
-    Script->>Script: sed: Aktualisiert hosts.ini mit der IP
+    Note over Script,TF: Schritt 2: Dynamische Inventory Erkennung
+    Script->>TF: op run -- terraform output server_ips
+    TF-->>Script: JSON-Map der IPs (dev-docker-01, gitlab, etc.)
+    Note over Script: Kein manuelles Patching der hosts.ini notwendig!
     end
 
     rect rgb(71, 85, 105)
-    Note over Script,VM: Schritt 4: Warten auf Boot & Netzwerk
-    loop Prüft Erreichbarkeit von Port 22 (TCP)
-        Script->>VM: nc -zvw1 178.x.x.x 22
-        VM-->>Script: Connection Refused (Verbindung abgelehnt)
-        Note over Script: sleep 5
-        VM-->>Script: Connection Succeeded (Verbindung erfolgreich - Cloud-init beendet)
+    Note over Script,VM: Schritt 3: Warten auf Boot & Netzwerk
+    loop Für Primär-Host (dev-docker-01)
+        Script->>VM: nc -zvw1 <IP> 22
+        VM-->>Script: Connection Succeeded
     end
     end
 
     rect rgb(15, 23, 42)
-    Note over Script,VM: Schritt 5: Konfigurationsmanagement
-    Script->>1Pwd: op read (Liest Private SSH Key via UUID)
-    1Pwd-->>Script: Schreibt Private Key in /tmp/file
-    Note over Script,Ansible: SSH Agent Bypass (env SSH_AUTH_SOCK="")
-    Script->>Ansible: ansible-playbook --private-key /tmp/file
-    Ansible->>VM: Verbindet sich über SSH (User: ansible)
-    VM-->>Ansible: Authentifiziert!
-    Ansible->>VM: Führt Rollen aus: common, security, docker
+    Note over Script,VM: Schritt 4: Konfigurationsmanagement
+    Script->>1Pwd: op read (SSH Key)
+    1Pwd-->>Script: Key bereitgestellt
+    Script->>Ansible: ansible-playbook (i hcloud.yml)
+    Ansible->>HCloud: API-Abfrage: Welche Server haben welche Labels?
+    HCloud-->>Ansible: Liste: dev-docker-01 (docker), gitlab (utility)
+    Ansible->>VM: Parallel: Rollen ausführen (common, security, roles/...)
     VM-->>Ansible: Fertig
     Ansible-->>Script: Playbook abgeschlossen
     end
 
-    Script->>Script: rm -f /tmp/file (Löscht den Key auf der Festplatte)
-    Script-->>Admin: Deployment erfolgreich! Server IP: 178.x.x.x
+    Script-->>Admin: Deployment erfolgreich!
 ```
 
 ---
 
 ## 2. Detaillierte Prozessschritte
 
-### Schritt 1: Infrastruktur Provisionierung (Terraform & S3)
+### Schritt 1: Infrastruktur Provisionierung (Multi-Server)
 
-In diesem Schritt wird die physische (bzw. virtuelle) Infrastruktur bei Hetzner Cloud erzeugt. Die Sicherheit wird durch die In-Memory Injection von Secrets via 1Password gewährleistet.
+In diesem Schritt wird die gesamte Infrastruktur-Map bei Hetzner Cloud abgeglichen.
 
 ```mermaid
 sequenceDiagram
@@ -86,52 +82,42 @@ sequenceDiagram
 
     Script->>1Pwd: op run -- terraform apply
     activate 1Pwd
-    Note right of 1Pwd: Löst op:// Referenzen in .env auf
-    1Pwd->>TF: Injiziert HCLOUD_TOKEN & AWS_KEYS in Environment
+    1Pwd->>TF: Injiziert HCLOUD_TOKEN & AWS_KEYS
     activate TF
 
-    TF->>S3: Prüfe State Lock (DynamoDB/S3-Native)
-    S3-->>TF: Lock erworben
-
-    TF->>HCloud: Vergleiche Plan mit Ist-Zustand
-    HCloud-->>TF: Änderungen erforderlich
-
-    TF->>HCloud: Erstelle Resource (Server, Network, Firewall)
-    HCloud-->>TF: Resource erstellt (ID: 123)
-
-    TF->>S3: Schreibe neuen State
-    TF->>S3: Release Lock
+    TF->>S3: State Lock erwerben
+    TF->>HCloud: Iteriere über var.servers (for_each)
+    HCloud-->>TF: Ressourcen (Server, Net, FW) erstellt/geändert
+    
+    TF->>S3: Schreibe State & Release Lock
     deactivate TF
-    1Pwd-->>Script: Prozess beendet (Secrets aus Memory gelöscht)
     deactivate 1Pwd
 ```
 
-### Schritt 2 & 3: IP Extraktion & Inventory Update
+### Schritt 2: Dynamische Inventar-Discovery
 
-Nachdem die VM existiert, muss ihre öffentliche IP-Adresse ermittelt und in das Ansible-Inventory (`hosts.ini`) geschrieben werden.
+Anstelle von `sed` im Inventory nutzen wir nun die direkte API-Abfrage.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Script as deploy_mvp.sh
-    participant 1Pwd as 1Password CLI
     participant TF as Terraform
-    participant S3 as AWS S3 (State)
-    participant FS as Dateisystem (hosts.ini)
+    participant Ansible as Ansible
+    participant HCloud as Hetzner API
 
-    Script->>1Pwd: op run -- terraform output server_ip
-    1Pwd->>TF: Injiziert AWS_KEYS (für S3 Zugriff)
-    TF->>S3: Lese aktuellen State
-    S3-->>TF: State Content (JSON)
-    TF-->>Script: 178.x.x.x
-
-    Script->>FS: sed -i 's/^dev-docker-01.*/dev-docker-01 ansible_host=178.x.x.x/'
-    Note right of FS: IP wird im Inventory aktualisiert
+    Script->>TF: terraform output server_ips
+    TF-->>Script: Map { "dev-docker-01": "...", "gitlab": "..." }
+    
+    Note over Script,Ansible: Ansible Start
+    Ansible->>HCloud: Inventory-Plugin (hcloud.yml) fragt API
+    HCloud-->>Ansible: Liefert Hosts + Labels (role, env)
+    Note right of Ansible: Gruppiert Hosts in @docker_hosts, @utility_hosts
 ```
 
-### Schritt 4: Verbindungsprüfung (SSH-Boot-Check)
+### Schritt 3: Verbindungsprüfung (SSH-Boot-Check)
 
-Bevor Ansible starten kann, muss sichergestellt sein, dass die VM nicht nur "läuft", sondern auch via SSH erreichbar ist. In dieser Phase führt die VM im Hintergrund **Cloud-Init** aus (Benutzer anlegen, SSH-Keys hinterlegen, Pakete aktualisieren).
+Der Script-Loop wartet auf die Erreichbarkeit des primären Management-Nodes.
 
 ```mermaid
 sequenceDiagram
@@ -141,69 +127,56 @@ sequenceDiagram
     participant CI as Cloud-Init (Hintergrund)
     participant SSH as SSH-Daemon (Port 22)
 
-    Note over VM,CI: VM wird gestartet
-    VM->>CI: Startet Cloud-Init Dienst
+    VM->>CI: Startet Cloud-Init
     activate CI
-    Note right of CI: Verarbeitet user_data (via Terraform)
-    CI->>CI: Erstelle User 'ansible'
-    CI->>CI: Hinterlege SSH-Keys
+    CI->>CI: User 'ansible' erstellen & Keys hinterlegen
     
     loop Alle 5 Sekunden
-        Script->>SSH: nc -zvw1 178.x.x.x 22
-        alt SSH noch nicht bereit / CI läuft noch
+        Script->>SSH: nc -zvw1 <PRIMARY_IP> 22
+        alt CI noch aktiv
             SSH-->>Script: Connection refused
-            Note over Script: sleep 5
-        else SSH bereit & CI abgeschlossen
-            CI->>SSH: Startet / Aktiviert Dienst
+        else CI abgeschlossen
+            CI->>SSH: Dienst bereit
             deactivate CI
             SSH-->>Script: Connection succeeded
         end
     end
 ```
 
-### Schritt 5: Konfigurationsmanagement (Ansible & 1Password)
+### Schritt 4: Konfigurationsmanagement (Ansible & 1Password)
 
-Der kritischste Schritt: Die sichere Übergabe des SSH-Keys an Ansible ohne Nutzung eines lokalen SSH-Agenten, um Interaktivität zu vermeiden.
+Die sichere Übergabe des SSH-Keys an Ansible.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Script as deploy_mvp.sh
     participant 1Pwd as 1Password CLI
-    participant FS as /tmp/deploy_key (Temp)
     participant Ansible as Ansible
-    participant VM as dev-docker-01
+    participant VM as Hosts (Parallel)
 
-    Script->>1Pwd: op read "op://Infrastructure/SSHKey/private_key"
-    1Pwd-->>FS: Schreibt Key temporär auf Disk
-
-    Note over Script,Ansible: env SSH_AUTH_SOCK="" (Agent Bypass)
-    Script->>Ansible: ansible-playbook --private-key /tmp/deploy_key
+    Script->>1Pwd: op read (Private SSH Key)
+    1Pwd-->>Script: Key in temporäre Datei
+    
+    Script->>Ansible: ansible-playbook -i inventory/dev/hcloud.yml
     activate Ansible
-
-    Ansible->>VM: SSH Verbindung aufbauen
-    VM-->>Ansible: Authentifizierung erfolgreich
-
-    Ansible->>VM: Führe Playbook-Rollen aus (Docker, Security, etc.)
+    Ansible->>VM: SSH Verbindung (User: ansible)
+    Ansible->>VM: Rollen: baseline + Rollen-spezifisch
     VM-->>Ansible: System konfiguriert
     deactivate Ansible
-
-    Script->>FS: rm -f /tmp/deploy_key
-    Note right of FS: Key wird sicher gelöscht
+    
+    Script->>Script: Lösche temporären Key
 ```
 
 ---
 
-## Architekturentscheidungen & Erläuterungen
+## Architekturentscheidungen
 
-### 1. 1Password "Local-First" Injection (`op run`)
+### 1. Label-basiertes Discovery
+Die Wahrheit über die Funktion eines Servers liegt nicht in einer statischen Textdatei, sondern als Metadaten (`Labels`) direkt an der Ressource in der Cloud. Dies ermöglicht echtes Auto-Scaling.
 
-Terraform benötigt zwingend API-Tokens (`HCLOUD_TOKEN`) und S3 Backend Zugangsdaten (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) als Umgebungsvariablen. Anstatt diese im Klartext auf der Festplatte zu speichern, ruft das Skript Terraform gebündelt über `op run` auf. Die 1Password CLI fängt die Ausführung ab, löst die `op://...` Referenzen aus der `.env` Datei auf, injiziert die entschlüsselten Werte absolut sicher und exklusiv in den Arbeitsspeicher (Memory) des Terraform-Prozesses und bereinigt alles restlos, sobald der Vorgang beendet ist.
+### 2. S3 State & Locking
+Der Infrastruktur-Status wird zentral im S3-Backend gespeichert. Dies ermöglicht Teamarbeit und verhindert gleichzeitige Änderungen durch automatisches Locking.
 
-### 2. S3 State Backend Authentifizierung
-
-Um Nebenläufigkeitsprobleme (Concurrency) zu verhindern und den Zustand der Cloud (State) sicher außerhalb des lokalen Repositories zu speichern, war der Wechsel auf ein S3-Bucket zwingend notwendig. Da der Befehl `terraform output` für die IP-Extraktion **ebenfalls** mit genau diesem S3-Backend kommunizieren muss, wird im Skript auch Schritt 2 via `op run` gestartet. So wird der fatale `"No valid credential sources found"` Fehler vermieden.
-
-### 3. SSH Agent Bypass (`env SSH_AUTH_SOCK=""`)
-
-Ein vollständig automatisiertes Playbook darf nicht unerwartet durch lokale 1Password Biometrie-Prompts blockiert oder durch "communication with agent failed" Socket-Fehler abstürzen. Das erreichen wir, indem dem SSH-Client des Systems gezielt der Zugang zum Agenten verwehrt wird (`SSH_AUTH_SOCK=""`). Stattdessen vertrauen wir einzig und allein auf die per UUID in Echtzeit von 1Password gezogene Datei über das `--private-key` Argument von Ansible. Auf diese Weise garantieren wir ein deterministisches und stets fehlerfrei durchlaufendes Deployment.
+### 3. SSH-Agent Isolation
+Zur Erhöhung der Sicherheit und Automatisierbarkeit umgehen wir den SSH-Agenten und injizieren den Key direkt aus 1Password pro Session.
