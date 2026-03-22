@@ -1,0 +1,52 @@
+{
+    "status-bar-buttons.buttons": [
+        {
+            "text": "🔭 Plan",
+            "tooltip": "Terraform Plan Visualizer",
+            "command": "workbench.action.tasks.runTask",
+            "arguments": [
+                "🔭 Plan"
+            ],
+            "alignment": "left",
+            "priority": 1000
+        },
+        {
+            "text": "🚀 Apply",
+            "tooltip": "Terraform Apply",
+            "command": "workbench.action.tasks.runTask",
+            "arguments": [
+                "🚀 Apply"
+            ],
+            "alignment": "left",
+            "priority": 999
+        }
+    ],
+    "commands.commands": {
+        "🔭 Plan": {
+            "command": "workbench.action.tasks.runTask",
+            "args": "🔭 Plan"
+        },
+        "🚀 Apply": {
+            "command": "workbench.action.tasks.runTask",
+            "args": "🚀 Apply"
+        }
+    },
+    "commands.statusbar": [
+        "🔭 Plan",
+        "🚀 Apply"
+    ],
+    "tasks.statusbar.items": [
+        {
+            "label": "🔭 Plan",
+            "task": "🔭 Plan",
+            "alignment": "left",
+            "priority": 1000
+        },
+        {
+            "label": "🚀 Apply",
+            "task": "🚀 Apply",
+            "alignment": "left",
+            "priority": 999
+        }
+    ]
+}

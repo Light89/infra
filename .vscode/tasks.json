@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🔭 Plan",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/terraform/environments/dev && ../../../scripts/tf-plan-view.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "🚀 Apply",
+            "type": "shell",
+            "command": "cd ${workspaceFolder}/terraform/environments/dev && ./run_terraform.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+}
