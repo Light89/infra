@@ -25,3 +25,9 @@ variable "admin_user" {
 variable "ssh_public_key" {
   type = string
 }
+
+variable "server_role" {
+  type        = string
+  description = "The role of the server (e.g. docker-host, base, utility)"
+  default     = "base"
+}

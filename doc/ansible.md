@@ -4,39 +4,36 @@ Diese Dokumentation beschreibt die automatisierten Konfigurationsschritte, die v
 
 ## 1. Playbook-Ablauf
 
-Das Haupt-Playbook (`site.yml`) ist modular aufgebaut und wendet verschiedene Rollen nacheinander an, um die gewünschte Zielkonfiguration zu erreichen.
+Das Haupt-Playbook (`site.yml`) ist modular aufgebaut. Während die Basis-Konfiguration auf allen Servern angewendet wird, erfolgt die Zuweisung spezialisierter Rollen automatisch basierend auf den Server-Labels.
 
 ```mermaid
-sequenceDiagram
-    participant Admin as Admin / CI
-    participant Playbook as site.yml
-    participant Common as Rolle: common
-    participant Sec as Rolle: security_baseline
-    participant Docker as Rolle: docker_host
-    participant VM as Ziel-Server
-
-    Admin->>Playbook: ansible-playbook run
+graph TD
+    A[Admin / CI] --> B(ansible-playbook site.yml)
+    B --> C{Alle Hosts}
+    C --> D[Rolle: common]
+    D --> E[Rolle: security_baseline]
     
-    rect rgb(30, 41, 59)
-    Note over Playbook,Common: Phase 1: Basis-System
-    Playbook->>Common: Anwenden
-    Common->>VM: Timezone & Logging
-    end
+    E --> F{Label: role?}
+    F -- docker-host --> G[Rolle: docker_host]
+    F -- utility --> H[Rolle: utility_host]
     
-    rect rgb(51, 65, 85)
-    Note over Playbook,Sec: Phase 2: Härtung
-    Playbook->>Sec: Anwenden
-    Sec->>VM: SSH-Hardening
-    end
-    
-    rect rgb(15, 23, 42)
-    Note over Playbook,Docker: Phase 3: Applikations-Ready
-    Playbook->>Docker: Anwenden
-    Docker->>VM: Docker Engine & Compose
-    end
-
-    Playbook-->>Admin: Konfiguration abgeschlossen
+    G --> I[Konfiguration abgeschlossen]
+    H --> I
 ```
+
+---
+
+## 5. Rolle: utility_host (Infrastruktur-Dienste)
+
+Die Rolle `utility_host` ist für Server vorgesehen, die administrative Hilfsaufgaben oder zentrale Infrastruktur-Dienste übernehmen (z.B. Bastion-Hosts, Monitoring-Einstiegspunkte oder Backup-Knoten).
+
+### Aufgaben & Funktionen
+1. **Rollen-Verifikation**: Ein Sicherheitscheck stellt sicher, dass die Rolle nur auf dafür vorgesehenen Hosts (Label `role: utility`) ausgeführt wird.
+2. **System-Vorbereitung**: Optimierung des Systems für Hintergrund-Tasks und administrative Werkzeuge.
+3. **Erweiterbarkeit**: Diese Rolle dient als Basis für zukünftige Dienste:
+   - **Backup-Management**: Zentrale Steuerung von Datenbank-Dumps und Dateisicherungen.
+   - **Monitoring-Aggregatoren**: Sammeln von Metriken der anderen Cluster-Knoten.
+   - **CI/CD Runner**: Lokale Ausführung von Build-Prozessen.
 
 ---
 

@@ -107,6 +107,24 @@ Jedes Modul ist nach demselben Schema aufgebaut, um Übersichtlichkeit und Wartb
 - **`outputs.tf`**: Deklariert die Rückgabewerte. Diese Werte können von anderen Modulen oder der Haupt-Konfiguration weiterverarbeitet werden (z.B. die Netzwerk-ID für den Server).
 - **`versions.tf`**: Spezifiziert die benötigten Provider und Versionen für dieses Modul (Portabilität).
 
+---
+
+## 7. Erweiterung: Neuen Host hinzufügen
+
+Durch die Umstellung auf das **dynamische Inventar** und **Terraform `for_each`** ist das Hinzufügen neuer Server ein einstufiger Prozess:
+
+1. **Konfiguration anpassen**: In [`terraform/environments/dev/variables.tf`](file:///Users/josephinelange/infra/terraform/environments/dev/variables.tf) einen neuen Eintrag zur Variable `servers` hinzufügen.
+2. **Beispiel**:
+   ```hcl
+   default = {
+     "dev-docker-01"  = { server_type = "cx23", role = "docker-host", location = "nbg1" },
+     "dev-utility-01" = { server_type = "cx11", role = "utility",     location = "nbg1" }
+   }
+   ```
+3. **Deployment**: Skript ausführen (`./scripts/deploy_mvp.sh`). 
+
+Terraform erstellt die Ressource und weist ihr das korrekte Label zu. Das Ansible-Plugin (`hcloud.yml`) erkennt den Server automatisch und wendet die passende Rolle (z.B. `utility_host`) an.
+
 ## Modulares Design & Best Practices
 
 In dieser Infrastruktur wurde bewusst auf ein modulares Design Wert gelegt.
