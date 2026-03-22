@@ -72,3 +72,21 @@ Zentrale Firewall-Regeln (`hcloud_firewall`) steuern den ein- und ausgehenden Da
 
 ### Outbound Regeln
 - **TCP/UDP**: Alle Ports sind nach außen hin offen (`0.0.0.0/0`, `::/0`), um Updates (apt, docker) und Kommunikation mit externen APIs zu ermöglichen.
+
+---
+
+## 5. Compute Instanzen (Server)
+
+Die Hauptinstanz (`hcloud_server`) dient als Docker-Host und wird automatisiert provisioniert.
+
+- **Name**: `dev-docker-01`
+- **Typ**: `cx23` (2 vCPU, 4 GB RAM)
+- **Image**: `debian-13`
+- **Location**: `nbg1` (Nürnberg)
+
+### Cloud-Init (Bootstrapping)
+Für die initiale Konfiguration wird das `user_data` Template genutzt. Dies ermöglicht ein "headless" Deployment ohne manuelle Eingriffe.
+
+- **Benutzer**: Ein administrativer User `ansible` wird angelegt.
+- **SSH**: Der öffentliche Schlüssel des Admins wird hinterlegt, um den Zugriff in Schritt 5 des Deployments zu ermöglichen.
+- **Automatisierung**: Cloud-Init bereitet das System so weit vor, dass Ansible nach Erreichbarkeit des SSH-Ports sofort übernehmen kann.
