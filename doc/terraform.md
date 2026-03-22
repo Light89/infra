@@ -42,3 +42,33 @@ Um Konsistenz in Team-Umgebungen zu gewährleisten und den Infrastruktur-Status 
 ### Besonderheiten
 - **Sicherheit**: Die Authentifizierung erfolgt ausschließlich über 1Password (`op run`), wodurch keine AWS-Keys lokal gespeichert werden müssen.
 - **Konfiguration**: Aufgrund der Nutzung von Hetzner S3 (nicht AWS) sind diverse Validierungen deaktiviert (`skip_region_validation`, `skip_credentials_validation`, etc.), um Kompatibilität sicherzustellen.
+
+---
+
+## 3. Netzwerk (Private Cloud)
+
+Die Infrastruktur nutzt ein isoliertes privates Netzwerk (`hcloud_network`), um den Traffic zwischen den Komponenten sicher zu gestalten.
+
+- **Name**: `dev-net`
+- **Adressraum**: `10.1.0.0/16`
+- **Subnetz**: `10.1.1.0/24` (Zone: `eu-central`)
+
+### Integration
+Server werden primär über das private Netzwerk miteinander verbunden. Dies reduziert die Angriffsfläche im öffentlichen Internet und sorgt für geringe Latenzen.
+
+---
+
+## 4. Sicherheitsgruppen (Firewall)
+
+Zentrale Firewall-Regeln (`hcloud_firewall`) steuern den ein- und ausgehenden Datenverkehr.
+
+- **Name**: `dev-default-fw`
+
+### Inbound Regeln
+| Protokoll | Port | Quelle | Zweck |
+|-----------|------|--------|-------|
+| TCP | 22 | `var.allowed_ssh_ips` | Sicherer SSH-Zugriff (via deploy_mvp.sh) |
+| ICMP | any | `0.0.0.0/0`, `::/0` | Ping / Diagnose erreichbar |
+
+### Outbound Regeln
+- **TCP/UDP**: Alle Ports sind nach außen hin offen (`0.0.0.0/0`, `::/0`), um Updates (apt, docker) und Kommunikation mit externen APIs zu ermöglichen.
