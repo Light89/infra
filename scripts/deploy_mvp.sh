@@ -14,8 +14,9 @@ cd "$ENV_DIR"
 # Assuming op is available as per the environment
 op run --account my.1password.com --env-file .env -- terraform apply -auto-approve
 
-echo "Step 2: Extracting server IP..."
-SERVER_IP=$(op run --account my.1password.com --env-file .env -- terraform output -raw server_ip)
+echo "Step 2: Extracting server IP (Primary: dev-docker-01)..."
+SERVER_IPS=$(op run --account my.1password.com --env-file .env -- terraform output -json server_ips)
+SERVER_IP=$(echo "$SERVER_IPS" | jq -r '."dev-docker-01"')
 
 if [ -z "$SERVER_IP" ]; then
     echo "Error: Could not retrieve server IP from Terraform output."
