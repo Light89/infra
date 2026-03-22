@@ -1,0 +1,11 @@
+---
+- name: Apply Base Configuration
+  hosts: all
+  roles:
+    - common
+    - security_baseline
+
+- name: Setup Docker Hosts
+  hosts: docker_hosts
+  roles:
+    - docker_host
