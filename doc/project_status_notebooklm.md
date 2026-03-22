@@ -9,6 +9,7 @@ Die Phase 1 der Infrastruktur-Evolution wurde erfolgreich umgesetzt. Das System 
 - **Scaling**: Terraform-Workflows verwenden `for_each` für beliebig viele Server.
 - **GitLab-Integration**: Bestehende Instanz erfolgreich importiert und via dynamic Inventory (Label `role: utility`) eingebunden.
 - **Zentrale Dokumentation**: Neue Server-Übersicht in `doc/servers.md` und detaillierter Ansible-Rollenguide in `doc/ansible.md`.
+- **Sicherheits-Checks & Linting**: Strikte `ansible-lint` FQCN Compliance implementiert und fehlende `hcloud_labels` Assertions in `utility_host` und `docker_host` hinzugefügt, um Fehlkonfigurationen vorzubeugen.
 - **Wartbarkeit**: `deploy_mvp.sh` wurde refactored und ist nun vollständig generisch.
 
 ## 2. Architektur-Stack
