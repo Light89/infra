@@ -103,3 +103,11 @@ Obwohl alle Komponenten aktuell dieselbe Provider-Version (`hcloud >= 1.60`) nut
 - **Portabilität**: Jedes Modul ist in sich abgeschlossen. Es kann problemlos in andere Projekte kopiert werden, ohne dass dort manuell nach den benötigten Providern gesucht werden muss.
 - **Zukunftssicherheit**: Sollte ein Modul in Zukunft eine spezifischere Version eines Providers benötigen, kann dies lokal im Modul gesteuert werden, ohne die globale Konfiguration zu beeinflussen.
 - **Standard-Konformität**: Dies entspricht den gängigen Terraform Best Practices für die Modulentwicklung.
+
+### Dateistruktur der Module
+Jedes Modul ist nach demselben Schema aufgebaut, um Übersichtlichkeit und Wartbarkeit zu garantieren:
+
+- **`main.tf`**: Enthält die eigentliche Definition der Ressourcen (Logik).
+- **`variables.tf`**: Definiert die Eingabeparameter des Moduls. Dies ermöglicht es, Module mit unterschiedlichen Werten (z.B. verschiedenen Standorten oder IP-Bereichen) aufzurufen.
+- **`outputs.tf`**: Deklariert die Rückgabewerte. Diese Werte können von anderen Modulen oder der Haupt-Konfiguration weiterverarbeitet werden (z.B. die Netzwerk-ID für den Server).
+- **`versions.tf`**: Spezifiziert die benötigten Provider und Versionen für dieses Modul (Portabilität).
