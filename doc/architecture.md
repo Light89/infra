@@ -9,7 +9,7 @@ Die folgende Sequenz zeigt den vollständigen Prozess von der Initialisierung bi
 ```mermaid
 sequenceDiagram
     autonumber
-    
+
     actor Admin
     participant Script as deploy_mvp.sh
     participant 1Pwd as 1Password CLI
@@ -89,16 +89,16 @@ sequenceDiagram
     Note right of 1Pwd: Löst op:// Referenzen in .env auf
     1Pwd->>TF: Injiziert HCLOUD_TOKEN & AWS_KEYS in Environment
     activate TF
-    
+
     TF->>S3: Prüfe State Lock (DynamoDB/S3-Native)
     S3-->>TF: Lock erworben
-    
+
     TF->>HCloud: Vergleiche Plan mit Ist-Zustand
     HCloud-->>TF: Änderungen erforderlich
-    
+
     TF->>HCloud: Erstelle Resource (Server, Network, Firewall)
     HCloud-->>TF: Resource erstellt (ID: 123)
-    
+
     TF->>S3: Schreibe neuen State
     TF->>S3: Release Lock
     deactivate TF
@@ -124,28 +124,39 @@ sequenceDiagram
     TF->>S3: Lese aktuellen State
     S3-->>TF: State Content (JSON)
     TF-->>Script: 178.x.x.x
-    
+
     Script->>FS: sed -i 's/^dev-docker-01.*/dev-docker-01 ansible_host=178.x.x.x/'
     Note right of FS: IP wird im Inventory aktualisiert
 ```
 
 ### Schritt 4: Verbindungsprüfung (SSH-Boot-Check)
 
-Bevor Ansible starten kann, muss sichergestellt sein, dass die VM nicht nur "läuft", sondern auch via SSH erreichbar ist (Cloud-Init abgeschlossen).
+Bevor Ansible starten kann, muss sichergestellt sein, dass die VM nicht nur "läuft", sondern auch via SSH erreichbar ist. In dieser Phase führt die VM im Hintergrund **Cloud-Init** aus (Benutzer anlegen, SSH-Keys hinterlegen, Pakete aktualisieren).
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Script as deploy_mvp.sh
-    participant VM as dev-docker-01 (Port 22)
+    participant VM as dev-docker-01 (Kernel)
+    participant CI as Cloud-Init (Hintergrund)
+    participant SSH as SSH-Daemon (Port 22)
 
+    Note over VM,CI: VM wird gestartet
+    VM->>CI: Startet Cloud-Init Dienst
+    activate CI
+    Note right of CI: Verarbeitet user_data (via Terraform)
+    CI->>CI: Erstelle User 'ansible'
+    CI->>CI: Hinterlege SSH-Keys
+    
     loop Alle 5 Sekunden
-        Script->>VM: nc -zvw1 178.x.x.x 22
-        alt Port geschlossen / Cloud-Init läuft
-            VM-->>Script: Connection refused
+        Script->>SSH: nc -zvw1 178.x.x.x 22
+        alt SSH noch nicht bereit / CI läuft noch
+            SSH-->>Script: Connection refused
             Note over Script: sleep 5
-        else Port offen / SSH bereit
-            VM-->>Script: Connection succeeded
+        else SSH bereit & CI abgeschlossen
+            CI->>SSH: Startet / Aktiviert Dienst
+            deactivate CI
+            SSH-->>Script: Connection succeeded
         end
     end
 ```
@@ -165,18 +176,18 @@ sequenceDiagram
 
     Script->>1Pwd: op read "op://Infrastructure/SSHKey/private_key"
     1Pwd-->>FS: Schreibt Key temporär auf Disk
-    
+
     Note over Script,Ansible: env SSH_AUTH_SOCK="" (Agent Bypass)
     Script->>Ansible: ansible-playbook --private-key /tmp/deploy_key
     activate Ansible
-    
+
     Ansible->>VM: SSH Verbindung aufbauen
     VM-->>Ansible: Authentifizierung erfolgreich
-    
+
     Ansible->>VM: Führe Playbook-Rollen aus (Docker, Security, etc.)
     VM-->>Ansible: System konfiguriert
     deactivate Ansible
-    
+
     Script->>FS: rm -f /tmp/deploy_key
     Note right of FS: Key wird sicher gelöscht
 ```
@@ -186,10 +197,13 @@ sequenceDiagram
 ## Architekturentscheidungen & Erläuterungen
 
 ### 1. 1Password "Local-First" Injection (`op run`)
+
 Terraform benötigt zwingend API-Tokens (`HCLOUD_TOKEN`) und S3 Backend Zugangsdaten (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`) als Umgebungsvariablen. Anstatt diese im Klartext auf der Festplatte zu speichern, ruft das Skript Terraform gebündelt über `op run` auf. Die 1Password CLI fängt die Ausführung ab, löst die `op://...` Referenzen aus der `.env` Datei auf, injiziert die entschlüsselten Werte absolut sicher und exklusiv in den Arbeitsspeicher (Memory) des Terraform-Prozesses und bereinigt alles restlos, sobald der Vorgang beendet ist.
 
 ### 2. S3 State Backend Authentifizierung
+
 Um Nebenläufigkeitsprobleme (Concurrency) zu verhindern und den Zustand der Cloud (State) sicher außerhalb des lokalen Repositories zu speichern, war der Wechsel auf ein S3-Bucket zwingend notwendig. Da der Befehl `terraform output` für die IP-Extraktion **ebenfalls** mit genau diesem S3-Backend kommunizieren muss, wird im Skript auch Schritt 2 via `op run` gestartet. So wird der fatale `"No valid credential sources found"` Fehler vermieden.
 
 ### 3. SSH Agent Bypass (`env SSH_AUTH_SOCK=""`)
+
 Ein vollständig automatisiertes Playbook darf nicht unerwartet durch lokale 1Password Biometrie-Prompts blockiert oder durch "communication with agent failed" Socket-Fehler abstürzen. Das erreichen wir, indem dem SSH-Client des Systems gezielt der Zugang zum Agenten verwehrt wird (`SSH_AUTH_SOCK=""`). Stattdessen vertrauen wir einzig und allein auf die per UUID in Echtzeit von 1Password gezogene Datei über das `--private-key` Argument von Ansible. Auf diese Weise garantieren wir ein deterministisches und stets fehlerfrei durchlaufendes Deployment.
