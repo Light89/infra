@@ -9,3 +9,8 @@
   hosts: docker_hosts
   roles:
     - docker_host
+
+- name: Setup Utility Hosts
+  hosts: utility_hosts
+  roles:
+    - utility_host

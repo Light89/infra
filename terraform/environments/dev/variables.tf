@@ -8,3 +8,22 @@ variable "allowed_ssh_ips" {
   description = "List of IPs allowed to connect via SSH"
   default     = ["0.0.0.0/0"]
 }
+variable "servers" {
+  type = map(object({
+    server_type = string
+    location    = string
+    role        = string
+  }))
+  default = {
+    "dev-docker-01" = {
+      server_type = "cx23"
+      location    = "nbg1"
+      role        = "docker-host"
+    },
+    "gitlab" = {
+      server_type = "cx23"
+      location    = "fsn1"
+      role        = "utility"
+    }
+  }
+}

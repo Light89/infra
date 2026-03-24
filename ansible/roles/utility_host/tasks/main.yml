@@ -1,0 +1,11 @@
+---
+# Tasks for Utility Hosts (Placeholder)
+- name: Utility role check (Sicherheitscheck)
+  ansible.builtin.assert:
+    that:
+      - hcloud_labels is defined
+      - hcloud_labels.role == 'utility'
+    fail_msg: "Dieser Host hat nicht das geforderte Label (role: utility). Abbruch!"
+    success_msg: "Sicherheitscheck erfolgreich: Host ist als utility markiert."
+
+# Future tasks: Backup, Monitoring Dashboard, CI-Runner

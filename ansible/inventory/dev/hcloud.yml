@@ -1,0 +1,33 @@
+# =============================================================================
+# Hetzner Cloud - Dynamisches Inventar
+# =============================================================================
+# Dieses Plugin scannt die Hetzner API nach Servern und gruppiert sie automatisch
+# basierend auf ihren Labels.
+#
+# Voraussetzungen: HCLOUD_TOKEN Umgebungsvariable muss gesetzt sein.
+# =============================================================================
+
+plugin: hetzner.hcloud.hcloud
+
+# Authentifizierung erfolgt via HCLOUD_TOKEN (wird durch op run injiziert)
+# token: "{{ lookup('env', 'HCLOUD_TOKEN') }}" 
+# (Hinweis: Das Plugin erkennt HCLOUD_TOKEN automatisch als Umgebungsvariable)
+
+# Name des Host-Eintrags im Inventar (bevorzugt der Anzeigename bei Hetzner)
+hostnames:
+  - name
+
+# Filtert nach dem Environment
+# filters:
+#   - label_selector: env=dev
+
+# Dynamische Gruppenbildung basierend auf Labels
+groups:
+  docker_hosts: hcloud_labels.role == "docker-host"
+  base_hosts: hcloud_labels.role == "base"
+  utility_hosts: hcloud_labels.role == "utility"
+
+# Setzt ansible_host auf die öffentliche IP (IPv4)
+compose:
+  ansible_host: public_net.ipv4.ip
+  ansible_user: "ansible"
