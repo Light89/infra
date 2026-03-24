@@ -39,7 +39,7 @@ echo "$SERVER_IPS_JSON" | jq -r '.[]' | while read -r ip; do
 done
 
 echo "Step 5: Applying Ansible playbooks..."
-cd "$BASE_DIR/ansible"
+cd "$BASE_DIR"
 
 # Fetch private key securely for Ansible
 PRIVATE_KEY_FILE=$(mktemp)
@@ -48,7 +48,7 @@ chmod 600 "$PRIVATE_KEY_FILE"
 
 # Disable SSH agent to prevent 'communication with agent failed' errors
 # Wir nutzen nun das dynamische Inventar hcloud.yml
-env SSH_AUTH_SOCK="" ansible-playbook -i inventory/dev/hcloud.yml playbooks/site.yml --user ansible --private-key "$PRIVATE_KEY_FILE"
+env SSH_AUTH_SOCK="" ansible-playbook -i ansible/inventory/dev/hcloud.yml ansible/playbooks/site.yml --user ansible --private-key "$PRIVATE_KEY_FILE"
 
 
 # Clean up
