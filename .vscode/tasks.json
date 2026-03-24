@@ -22,6 +22,17 @@
                 "panel": "new"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "🚀 Deploy MVP",
+            "type": "shell",
+            "command": "${workspaceFolder}/scripts/deploy_mvp.sh",
+            "group": "none",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
         }
     ]
 }
