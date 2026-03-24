@@ -24,3 +24,26 @@
     group: root
     mode: '0600'
   notify: Reconfigure GitLab
+
+- name: Force handlers to run now so GitLab is fully up before executing rails runner
+  ansible.builtin.meta: flush_handlers
+
+- name: Harden GitLab security settings (Disable Public Sign-ups and Web IDE Fallback)
+  ansible.builtin.command:
+    cmd: >-
+      gitlab-rails runner "
+        settings = Gitlab::CurrentSettings.current_application_settings;
+        changed = false;
+        if settings.signup_enabled != false;
+          settings.signup_enabled = false;
+          changed = true;
+        end;
+        if settings.vscode_extension_marketplace_single_origin_fallback_enabled != false;
+          settings.vscode_extension_marketplace_single_origin_fallback_enabled = false;
+          changed = true;
+        end;
+        settings.save! if changed;
+        puts changed ? 'changed' : 'ok';
+      "
+  register: gitlab_hardening
+  changed_when: "'changed' in gitlab_hardening.stdout"
