@@ -16,3 +16,36 @@
     regexp: '^#?MaxRetentionSec='
     line: 'MaxRetentionSec=1month'
   notify: Restart journald
+
+- name: Check if swap is already enabled
+  command: swapon --show
+  register: swap_status
+  changed_when: false
+
+- name: Create swap file
+  command: fallocate -l 4G /swapfile
+  when: "not '/swapfile' in swap_status.stdout"
+
+- name: Set swap file permissions
+  file:
+    path: /swapfile
+    mode: '0600'
+  when: "not '/swapfile' in swap_status.stdout"
+
+- name: Make swap file
+  command: mkswap /swapfile
+  when: "not '/swapfile' in swap_status.stdout"
+
+- name: Enable swap
+  command: swapon /swapfile
+  when: "not '/swapfile' in swap_status.stdout"
+
+- name: Add swap to fstab
+  mount:
+    name: none
+    src: /swapfile
+    fstype: swap
+    opts: sw
+    passno: '0'
+    dump: '0'
+    state: present

@@ -14,3 +14,11 @@
   hosts: utility_hosts
   roles:
     - utility_host
+
+- name: Setup GitLab Host
+  hosts: gitlab
+  roles:
+    - gitlab_host
+# Note: Sensitive variables such as `gitlab_initial_root_password` and `smtp_password`
+# should be injected via 1Password at runtime to prevent hardcoding secrets.
+# Example: op run --env-file .env -- ansible-playbook ansible/playbooks/site.yml -i ansible/inventory/dev/hcloud.yml

@@ -48,7 +48,7 @@ chmod 600 "$PRIVATE_KEY_FILE"
 
 # Disable SSH agent to prevent 'communication with agent failed' errors
 # Wir nutzen nun das dynamische Inventar hcloud.yml
-env SSH_AUTH_SOCK="" ansible-playbook -i ansible/inventory/dev/hcloud.yml ansible/playbooks/site.yml --user ansible --private-key "$PRIVATE_KEY_FILE"
+env SSH_AUTH_SOCK="" op run --account my.1password.com --env-file "$ENV_DIR/.env" -- ansible-playbook -i ansible/inventory/dev/hcloud.yml ansible/playbooks/site.yml --user ansible --private-key "$PRIVATE_KEY_FILE"
 
 
 # Clean up

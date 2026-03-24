@@ -18,8 +18,7 @@ hostnames:
   - name
 
 # Filtert nach dem Environment
-# filters:
-#   - label_selector: env=dev
+label_selector: "env=dev"
 
 # Dynamische Gruppenbildung basierend auf Labels
 groups:
