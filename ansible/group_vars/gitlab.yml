@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# GitLab Configuration Variables
+# =============================================================================
+
+# Domain Configuration
+gitlab_domain: "gitlab.ihre-domain.de"
+
+# Email Configuration
+gitlab_smtp_address: "smtp.ihre-domain.de"
+gitlab_smtp_port: 587
+gitlab_smtp_user_name: "postmaster@ihre-domain.de"
+
+gitlab_email_from: "gitlab@ihre-domain.de"
+gitlab_email_display_name: "GitLab"
+gitlab_email_reply_to: "noreply@ihre-domain.de"
+
+# =============================================================================
+# SENSITIVE VARIABLES (1Password Injection)
+# =============================================================================
+# DO NOT hardcode sensitive passwords here!
+# The following variables should be provided via environment variables injected 
+# by 1Password at runtime:
+#
+# gitlab_initial_root_password: "{{ lookup('env', 'GITLAB_INITIAL_ROOT_PASSWORD') }}"
+# gitlab_smtp_password: "{{ lookup('env', 'GITLAB_SMTP_PASSWORD') }}"
+#
+# Example execution:
+# op run --env-file .env -- ansible-playbook ansible/playbooks/site.yml

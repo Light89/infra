@@ -1,0 +1,26 @@
+---
+# tasks file for gitlab_host
+
+- name: Add GitLab CE repository
+  ansible.builtin.shell:
+    cmd: "set -o pipefail && curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash"
+    creates: /etc/apt/sources.list.d/gitlab_gitlab-ce.list
+    executable: /bin/bash
+  # noqa command-instead-of-module
+
+- name: Install GitLab CE package
+  ansible.builtin.apt:
+    name: gitlab-ce
+    state: present
+    update_cache: true
+  environment:
+    GITLAB_ROOT_PASSWORD: "{{ gitlab_initial_root_password | default('') }}"
+
+- name: Template GitLab configuration file
+  ansible.builtin.template:
+    src: gitlab.rb.j2
+    dest: /etc/gitlab/gitlab.rb
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Reconfigure GitLab

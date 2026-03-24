@@ -1,0 +1,32 @@
+# =============================================================================
+# GitLab Configuration File
+# This file is managed by Ansible. Local changes will be overwritten!
+# =============================================================================
+
+# External URL (HTTPS enables Let's Encrypt automatically)
+external_url 'https://{{ gitlab_domain }}'
+
+# =============================================================================
+# Email & SMTP Settings
+# =============================================================================
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "{{ gitlab_smtp_address }}"
+gitlab_rails['smtp_port'] = {{ gitlab_smtp_port | default(587) }}
+gitlab_rails['smtp_user_name'] = "{{ gitlab_smtp_user_name }}"
+gitlab_rails['smtp_password'] = "{{ gitlab_smtp_password }}"
+# Depending on the port, adjust TLS/SSL settings:
+{% if gitlab_smtp_port | int == 465 %}
+gitlab_rails['smtp_tls'] = true
+{% else %}
+gitlab_rails['smtp_enable_starttls_auto'] = true
+{% endif %}
+
+gitlab_rails['gitlab_email_from'] = "{{ gitlab_email_from }}"
+gitlab_rails['gitlab_email_display_name'] = "{{ gitlab_email_display_name | default('GitLab') }}"
+gitlab_rails['gitlab_email_reply_to'] = "{{ gitlab_email_reply_to | default(gitlab_email_from) }}"
+
+# =============================================================================
+# Backups
+# =============================================================================
+# Keep local backups for 7 days (604800 seconds)
+gitlab_rails['backup_keep_time'] = 604800

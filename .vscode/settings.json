@@ -19,6 +19,16 @@
             ],
             "alignment": "left",
             "priority": 999
+        },
+        {
+            "text": "🚀 Deploy MVP",
+            "tooltip": "Deploy MVP application",
+            "command": "workbench.action.tasks.runTask",
+            "arguments": [
+                "🚀 Deploy MVP"
+            ],
+            "alignment": "right",
+            "priority": 998
         }
     ],
     "commands.commands": {
@@ -29,11 +39,16 @@
         "🚀 Apply": {
             "command": "workbench.action.tasks.runTask",
             "args": "🚀 Apply"
+        },
+        "🚀 Deploy MVP": {
+            "command": "workbench.action.tasks.runTask",
+            "args": "🚀 Deploy MVP"
         }
     },
     "commands.statusbar": [
         "🔭 Plan",
-        "🚀 Apply"
+        "🚀 Apply",
+        "🚀 Deploy MVP"
     ],
     "tasks.statusbar.items": [
         {
@@ -47,6 +62,12 @@
             "task": "🚀 Apply",
             "alignment": "left",
             "priority": 999
+        },
+        {
+            "label": "🚀 Deploy MVP",
+            "task": "🚀 Deploy MVP",
+            "alignment": "left",
+            "priority": 998
         }
     ]
 }
