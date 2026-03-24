@@ -1,0 +1,7 @@
+---
+# handlers file for gitlab_host
+
+- name: Reconfigure GitLab
+  ansible.builtin.command:
+    cmd: gitlab-ctl reconfigure
+  changed_when: true
